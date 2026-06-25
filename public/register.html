@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Report a missing child · Missing Child Finder</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <header class="site">
+    <div class="wrap">
+      <h1>Missing Child Finder</h1>
+      <p>Helping reunite missing children with their families</p>
+    </div>
+  </header>
+  <nav class="site">
+    <div class="wrap">
+      <a href="/">Home</a>
+      <a href="/register.html" class="active">Report a missing child</a>
+      <a href="/search.html">I found a child</a>
+      <a href="/alerts.html">Alerts</a>
+    </div>
+  </nav>
+
+  <main>
+    <div class="panel">
+      <h2>Report a missing child</h2>
+      <p class="lead">
+        Add the child's details and a clear, front-facing photo. We will be able to
+        alert you if someone later uploads a matching photo.
+      </p>
+
+      <form id="form">
+        <label for="name">Child's full name <span class="hint">(required)</span></label>
+        <input type="text" id="name" name="name" required />
+
+        <label for="ageWhenMissing">Age when the child went missing</label>
+        <input type="number" id="ageWhenMissing" name="ageWhenMissing" min="0" max="18" />
+
+        <label for="dateMissing">Date the child went missing <span class="hint">(required)</span></label>
+        <input type="date" id="dateMissing" name="dateMissing" required />
+
+        <label for="parentName">Your name (parent / guardian) <span class="hint">(required)</span></label>
+        <input type="text" id="parentName" name="parentName" required />
+
+        <label for="parentEmail">Your email <span class="hint">(email or phone required — used to alert you)</span></label>
+        <input type="email" id="parentEmail" name="parentEmail" />
+
+        <label for="parentPhone">Your phone</label>
+        <input type="tel" id="parentPhone" name="parentPhone" />
+
+        <label for="photo">Photo of the child <span class="hint">(clear, front-facing, one person)</span></label>
+        <input type="file" id="photo" name="photo" accept="image/*" required />
+        <img id="preview" class="preview" alt="Selected photo preview" />
+
+        <button type="submit" id="submitBtn">Submit report</button>
+      </form>
+
+      <div class="status" id="status"></div>
+    </div>
+
+    <p class="notice">
+      Please only submit photos you are entitled to share. This information is used
+      solely to help find the child.
+    </p>
+  </main>
+
+  <footer class="site">
+    Missing Child Finder · Built to help families · Use responsibly
+  </footer>
+
+  <script src="/vendor/face-api.js"></script>
+  <script src="/js/face.js"></script>
+  <script src="/js/register.js"></script>
+</body>
+</html>

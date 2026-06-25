@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>I found a child · Missing Child Finder</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <header class="site">
+    <div class="wrap">
+      <h1>Missing Child Finder</h1>
+      <p>Helping reunite missing children with their families</p>
+    </div>
+  </header>
+  <nav class="site">
+    <div class="wrap">
+      <a href="/">Home</a>
+      <a href="/register.html">Report a missing child</a>
+      <a href="/search.html" class="active">I found a child</a>
+      <a href="/alerts.html">Alerts</a>
+    </div>
+  </nav>
+
+  <main>
+    <div class="panel">
+      <h2>I found a child</h2>
+      <p class="lead">
+        If you have found or seen a child you believe may be lost or taken, upload a
+        clear photo. We will compare it against every registered missing child. If
+        there is a strong match (80% or higher), the child's family is alerted.
+      </p>
+
+      <form id="form">
+        <label for="photo">Photo of the child you found <span class="hint">(clear, front-facing, one person)</span></label>
+        <input type="file" id="photo" name="photo" accept="image/*" required />
+        <img id="preview" class="preview" alt="Selected photo preview" />
+
+        <label for="location">Where did you see the child? <span class="hint">(optional)</span></label>
+        <input type="text" id="location" name="location" placeholder="City / area" />
+
+        <label for="finderName">Your name <span class="hint">(optional)</span></label>
+        <input type="text" id="finderName" name="finderName" />
+
+        <label for="finderContact">Your contact <span class="hint">(optional — so the family can reach you)</span></label>
+        <input type="text" id="finderContact" name="finderContact" />
+
+        <label for="note">Anything else? <span class="hint">(optional)</span></label>
+        <textarea id="note" name="note"></textarea>
+
+        <button type="submit" id="submitBtn">Compare photo</button>
+      </form>
+
+      <div class="status" id="status"></div>
+      <div id="results"></div>
+    </div>
+
+    <p class="notice">
+      A possible match is not proof. Please do not confront anyone. Share any strong
+      match with your local police or child-protection authorities, who can verify it
+      safely.
+    </p>
+  </main>
+
+  <footer class="site">
+    Missing Child Finder · Built to help families · Use responsibly
+  </footer>
+
+  <script src="/vendor/face-api.js"></script>
+  <script src="/js/face.js"></script>
+  <script src="/js/search.js"></script>
+</body>
+</html>

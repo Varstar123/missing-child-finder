@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Missing Child Finder</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <header class="site">
+    <div class="wrap">
+      <h1>Missing Child Finder</h1>
+      <p>Helping reunite missing children with their families</p>
+    </div>
+  </header>
+  <nav class="site">
+    <div class="wrap">
+      <a href="/" class="active">Home</a>
+      <a href="/register.html">Report a missing child</a>
+      <a href="/search.html">I found a child</a>
+      <a href="/alerts.html">Alerts</a>
+    </div>
+  </nav>
+
+  <main>
+    <div class="panel">
+      <h2>How it works</h2>
+      <p class="lead">
+        If a child goes missing, their family registers a recent photo here. Years
+        later, anyone who finds or sees a child they believe may be lost or taken
+        can upload a photo. We compare the faces and, when there is a strong match,
+        we alert the registered family.
+      </p>
+      <ol class="steps">
+        <li><strong>A family reports a missing child</strong> with a clear photo and the date the child went missing.</li>
+        <li><strong>Someone who finds a child</strong> uploads a photo of that child.</li>
+        <li><strong>Our face-matching compares</strong> the photo against every registered child.</li>
+        <li><strong>If the match is 80% or higher</strong>, an alert with the found photo is created for the family.</li>
+      </ol>
+    </div>
+
+    <div class="panel">
+      <h2>Current records</h2>
+      <div class="stat-row" id="stats">
+        <div class="stat"><b id="childCount">–</b> children registered</div>
+        <div class="stat"><b id="alertCount">–</b> alerts created</div>
+      </div>
+    </div>
+
+    <p class="notice">
+      This is a tool to assist a human search — not a replacement for the police or
+      child-protection authorities. Face matching can be wrong. Any possible match
+      must be verified by people before any action is taken. If you believe a child
+      is in immediate danger, contact your local emergency services first.
+    </p>
+  </main>
+
+  <footer class="site">
+    Missing Child Finder · Built to help families · Use responsibly
+  </footer>
+
+  <script>
+    fetch('/api/stats')
+      .then((r) => r.json())
+      .then((s) => {
+        document.getElementById('childCount').textContent = s.children;
+        document.getElementById('alertCount').textContent = s.alerts;
+      })
+      .catch(() => {});
+  </script>
+</body>
+</html>

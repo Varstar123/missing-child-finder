@@ -1,0 +1,14 @@
+{
+  "name": "missing-child-finder",
+  "version": "1.0.0",
+  "description": "A website that uses face matching to help reunite missing children with their families.",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "setup": "node scripts/download-models.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Alerts · Missing Child Finder</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <header class="site">
+    <div class="wrap">
+      <h1>Missing Child Finder</h1>
+      <p>Helping reunite missing children with their families</p>
+    </div>
+  </header>
+  <nav class="site">
+    <div class="wrap">
+      <a href="/">Home</a>
+      <a href="/register.html">Report a missing child</a>
+      <a href="/search.html">I found a child</a>
+      <a href="/alerts.html" class="active">Alerts</a>
+    </div>
+  </nav>
+
+  <main>
+    <div class="panel">
+      <h2>Alerts sent to families</h2>
+      <p class="lead">
+        Each alert below was created when an uploaded photo strongly matched a
+        registered child. In a live system the family receives this by email or text.
+      </p>
+      <div id="alerts"><p class="empty">Loading…</p></div>
+    </div>
+  </main>
+
+  <footer class="site">
+    Missing Child Finder · Built to help families · Use responsibly
+  </footer>
+
+  <script>
+    function esc(s) {
+      return String(s || '').replace(/[&<>"]/g, (c) =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    }
+
+    fetch('/api/alerts')
+      .then((r) => r.json())
+      .then(({ alerts }) => {
+        const el = document.getElementById('alerts');
+        if (!alerts.length) {
+          el.innerHTML = '<p class="empty">No alerts yet.</p>';
+          return;
+        }
+        el.innerHTML = alerts.map((a) => {
+          const when = new Date(a.createdAt).toLocaleString();
+          const contact = a.parentEmail || a.parentPhone || 'no contact on file';
+          return (
+            '<div class="alert-card">' +
+              '<p class="meta"><span class="pct">' + a.matchPercent + '% match</span> — ' +
+                'possible sighting of <strong>' + esc(a.childName) + '</strong></p>' +
+              '<div class="photos">' +
+                '<figure><img src="' + esc(a.childPhotoUrl) + '" alt="Registered photo" />' +
+                  '<figcaption>Registered photo</figcaption></figure>' +
+                '<figure><img src="' + esc(a.foundPhotoUrl) + '" alt="Photo uploaded by finder" />' +
+                  '<figcaption>Photo uploaded by finder</figcaption></figure>' +
+              '</div>' +
+              '<p class="meta">To family: ' + esc(a.parentName) + ' (' + esc(contact) + ')</p>' +
+              (a.location ? '<p class="meta">Seen at: ' + esc(a.location) + '</p>' : '') +
+              (a.finderName || a.finderContact
+                ? '<p class="meta">Finder: ' + esc(a.finderName || '—') +
+                  (a.finderContact ? ' (' + esc(a.finderContact) + ')' : '') + '</p>'
+                : '') +
+              (a.note ? '<p class="meta">Note: ' + esc(a.note) + '</p>' : '') +
+              '<p class="meta hint">' + esc(when) + '</p>' +
+            '</div>'
+          );
+        }).join('');
+      })
+      .catch(() => {
+        document.getElementById('alerts').innerHTML =
+          '<p class="empty">Could not load alerts.</p>';
+      });
+  </script>
+</body>
+</html>
