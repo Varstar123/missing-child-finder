@@ -34,8 +34,15 @@ create table if not exists alerts (
   location         text default '',
   note             text default '',
   status           text default 'unconfirmed',
+  notified         boolean default false,     -- was the family emailed/texted?
+  notify_error     text,                       -- delivery error, if any
   created_at       timestamptz not null default now()
 );
+
+-- If you created the alerts table before the notification feature existed,
+-- run these once to add the new columns (safe to run repeatedly):
+alter table alerts add column if not exists notified boolean default false;
+alter table alerts add column if not exists notify_error text;
 
 -- Public bucket for the photos. Public read is required so the browser can
 -- display the stored images. Writes go through the server using the service

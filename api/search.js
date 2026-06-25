@@ -2,6 +2,7 @@
 const { getSupabase } = require('../lib/supabase');
 const { uploadImage } = require('../lib/storage');
 const { euclideanDistance, distanceToPercent, MATCH_THRESHOLD_PERCENT } = require('../lib/match');
+const { notifyGuardian } = require('../lib/notify');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
@@ -45,12 +46,36 @@ module.exports = async (req, res) => {
       note: note ? String(note).trim() : '',
       status: 'unconfirmed',
     }));
-    const { error: insErr } = await sb.from('alerts').insert(alertRows);
+    const { data: inserted, error: insErr } = await sb
+      .from('alerts')
+      .insert(alertRows)
+      .select('id, child_name, match_percent, parent_email, parent_phone, found_photo_url, location');
     if (insErr) throw new Error(insErr.message);
 
-    // In production, this is where you would email/text the guardian
-    // (e.g. via Resend, Twilio, or a Supabase Edge Function) using the
-    // parent_email / parent_phone on each matched child.
+    // Deliver the alert to each matched family by email and/or SMS. This is
+    // best-effort: a delivery failure (or no provider configured) must not fail
+    // the search — the alert is already recorded and shown on the Alerts page.
+    await Promise.all(
+      (inserted || []).map(async (row) => {
+        try {
+          const result = await notifyGuardian({
+            childName: row.child_name,
+            matchPercent: row.match_percent,
+            parentEmail: row.parent_email,
+            parentPhone: row.parent_phone,
+            location: row.location,
+            foundPhotoUrl: row.found_photo_url,
+          });
+          await sb
+            .from('alerts')
+            .update({ notified: result.sent, notify_error: result.error || null })
+            .eq('id', row.id);
+        } catch (err) {
+          // Swallow — notification problems should never break the response.
+          console.error('Alert delivery failed:', err.message);
+        }
+      })
+    );
 
     const matches = scored.map((s) => ({
       childName: s.child.name,

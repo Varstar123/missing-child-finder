@@ -1,25 +1,62 @@
 const form = document.getElementById('form');
 const statusEl = document.getElementById('status');
 const submitBtn = document.getElementById('submitBtn');
-const photoInput = document.getElementById('photo');
-const preview = document.getElementById('preview');
 const results = document.getElementById('results');
+
+// Styled "Choose / Take a photo" picker (public/js/photo-input.js).
+const picker = initPhotoPicker({ onChange: () => { results.innerHTML = ''; } });
 
 function setStatus(kind, msg) {
   statusEl.className = 'status ' + kind;
   statusEl.textContent = msg;
 }
 
-photoInput.addEventListener('change', () => {
-  const file = photoInput.files[0];
-  results.innerHTML = '';
-  if (file) {
-    preview.src = URL.createObjectURL(file);
-    preview.style.display = 'block';
-  } else {
-    preview.style.display = 'none';
-  }
-});
+// ---- Auto-fetch location ----------------------------------------------------
+// Fills the "where did you see the child" box from the device's GPS. Manual
+// typing still works; this is just a shortcut. We try to turn the coordinates
+// into a readable place name (OpenStreetMap), and fall back to the raw
+// latitude/longitude if that lookup is unavailable.
+const locBtn = document.getElementById('locBtn');
+const locInput = document.getElementById('location');
+const locStatus = document.getElementById('locStatus');
+
+if (locBtn) {
+  locBtn.addEventListener('click', () => {
+    if (!navigator.geolocation) {
+      locStatus.textContent = 'Your browser does not support location. Please type the place instead.';
+      return;
+    }
+    locBtn.disabled = true;
+    locStatus.textContent = 'Finding your location…';
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const coords = latitude.toFixed(5) + ', ' + longitude.toFixed(5);
+        try {
+          const r = await fetch(
+            'https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=16&lat=' +
+              latitude + '&lon=' + longitude,
+            { headers: { Accept: 'application/json' } }
+          );
+          const data = await r.json();
+          locInput.value = (data && data.display_name) ? data.display_name : coords;
+        } catch (_) {
+          locInput.value = coords;
+        }
+        locStatus.textContent = 'Location filled in — you can edit it if needed.';
+        locBtn.disabled = false;
+      },
+      (err) => {
+        locStatus.textContent =
+          err.code === err.PERMISSION_DENIED
+            ? 'Location permission was denied. Please type the place instead.'
+            : 'Could not get your location. Please type the place instead.';
+        locBtn.disabled = false;
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  });
+}
 
 function renderMatches(matches) {
   if (matches.length === 0) {
@@ -47,8 +84,8 @@ function renderMatches(matches) {
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const file = photoInput.files[0];
-  if (!file) return setStatus('error', 'Please choose a photo.');
+  const file = picker.getFile();
+  if (!file) return setStatus('error', 'Please choose or take a photo.');
 
   submitBtn.disabled = true;
   results.innerHTML = '';

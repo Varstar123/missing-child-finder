@@ -1,28 +1,19 @@
 const form = document.getElementById('form');
 const statusEl = document.getElementById('status');
 const submitBtn = document.getElementById('submitBtn');
-const photoInput = document.getElementById('photo');
-const preview = document.getElementById('preview');
+
+// Styled "Choose / Take a photo" picker (public/js/photo-input.js).
+const picker = initPhotoPicker();
 
 function setStatus(kind, msg) {
   statusEl.className = 'status ' + kind;
   statusEl.textContent = msg;
 }
 
-photoInput.addEventListener('change', () => {
-  const file = photoInput.files[0];
-  if (file) {
-    preview.src = URL.createObjectURL(file);
-    preview.style.display = 'block';
-  } else {
-    preview.style.display = 'none';
-  }
-});
-
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const file = photoInput.files[0];
-  if (!file) return setStatus('error', 'Please choose a photo.');
+  const file = picker.getFile();
+  if (!file) return setStatus('error', 'Please choose or take a photo.');
 
   submitBtn.disabled = true;
   setStatus('info', 'Reading the photo and checking for a face… (the first time may take a few seconds)');
@@ -50,9 +41,9 @@ form.addEventListener('submit', async (e) => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Could not save the report.');
 
-    setStatus('success', 'Report saved. We will create an alert for you if a matching photo is uploaded.');
+    setStatus('success', 'Report saved. We will alert you by email or text if a matching photo is uploaded.');
     form.reset();
-    preview.style.display = 'none';
+    picker.reset();
   } catch (err) {
     setStatus('error', err.message);
   } finally {

@@ -85,10 +85,12 @@ main {
   margin-bottom: 20px;
 }
 
-h2 { font-size: 1.2rem; margin-top: 0; }
-h3 { font-size: 1.02rem; }
+h2 { font-size: 1.5rem; margin-top: 0; }
+h3 { font-size: 1.1rem; }
 
-p.lead { color: var(--muted); }
+/* The lead paragraph carries the main message of a page — keep it large and
+   readable so it reads as the most important text on the panel. */
+p.lead { color: var(--ink); font-size: 1.12rem; line-height: 1.6; }
 
 label {
   display: block;
@@ -121,26 +123,148 @@ input:focus, textarea:focus, button:focus {
 
 input[type="file"] { font-size: 0.9rem; }
 
+/* Base button + variants so every clickable control matches the site, instead
+   of the browser's default file box. */
 button {
+  font-family: inherit;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+button:disabled { cursor: not-allowed; opacity: 0.6; }
+
+/* Primary call to action — the most important control on a form. Large. */
+button[type="submit"], .btn-primary {
   background: var(--navy);
   color: #fff;
-  border: none;
-  border-radius: 4px;
-  padding: 11px 20px;
-  font-size: 0.96rem;
-  cursor: pointer;
-  margin-top: 18px;
+  padding: 14px 26px;
+  font-size: 1.08rem;
+  font-weight: 600;
+  margin-top: 20px;
 }
-button:hover { background: var(--navy-dark); }
-button:disabled { background: #9aa7b4; cursor: not-allowed; }
+button[type="submit"]:hover, .btn-primary:hover { background: var(--navy-dark); }
+button[type="submit"]:disabled { background: #9aa7b4; }
+
+/* Soft secondary button — used for the photo "Choose / Take" and location
+   helpers. Reads as a clear action but quieter than the primary submit. */
+.btn-soft {
+  background: #eaf0f6;
+  color: var(--navy);
+  border: 1px solid #cdd9e6;
+  padding: 11px 18px;
+  font-size: 0.96rem;
+  font-weight: 600;
+}
+.btn-soft:hover { background: #dfe8f2; }
+
+/* Ghost / tertiary — least important (cancel, clear). Small. */
+.btn-ghost {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  padding: 9px 14px;
+  font-size: 0.9rem;
+}
+.btn-ghost:hover { background: #f0f3f6; }
+
+/* ---- Styled photo picker (choose / take a photo) ------------------------- */
+/* Two equal-width buttons that read as one tidy pair and match the site's
+   navy palette — icon + label, same size, wrapping to stacked on narrow
+   screens. */
+.photo-field { margin-top: 6px; }
+.photo-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+.photo-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  background: #eef3f8;
+  color: var(--navy);
+  border: 1px solid #cdd9e6;
+  border-radius: 6px;
+  padding: 14px 16px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.photo-btn:hover { background: #e1eaf4; border-color: var(--navy); }
+.photo-btn svg { flex: none; opacity: 0.85; }
+.photo-hint { margin: 10px 0 0; }
 
 .preview {
-  margin-top: 10px;
-  max-width: 220px;
+  margin-top: 12px;
+  max-width: 240px;
+  width: 100%;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 6px;
   display: none;
 }
+#clearPhotoBtn { display: none; margin-top: 8px; }
+
+/* ---- Location picker ----------------------------------------------------- */
+.field-with-button { display: flex; gap: 10px; flex-wrap: wrap; align-items: stretch; }
+.field-with-button input { flex: 1 1 220px; }
+.field-with-button .btn-soft {
+  white-space: nowrap;
+  margin-top: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.field-with-button .btn-soft svg { flex: none; opacity: 0.85; }
+.loc-status { font-size: 0.85rem; color: var(--muted); margin: 6px 0 0; }
+
+/* ---- Live camera modal --------------------------------------------------- */
+.cam-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 18, 28, 0.82);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 1000;
+}
+.cam-modal.open { display: flex; }
+.cam-box {
+  background: #0b121c;
+  border-radius: 10px;
+  padding: 14px;
+  width: 100%;
+  max-width: 520px;
+}
+.cam-video {
+  width: 100%;
+  max-height: 70vh;
+  background: #000;
+  border-radius: 8px;
+  display: block;
+}
+.cam-video[hidden] { display: none; } /* author rule must beat display:block */
+.cam-msg { color: #ffd9d9; font-size: 0.92rem; margin: 10px 2px 0; }
+.cam-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: stretch;
+  margin-top: 14px;
+}
+/* Normalize every modal button to the same height/shape so they sit as a
+   neat row; colour alone signals which is primary. */
+.cam-actions button {
+  margin-top: 0;
+  padding: 12px 22px;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 6px;
+}
+.cam-actions .btn-ghost { color: #d8e2ee; border-color: #38465a; }
+.cam-actions .btn-ghost:hover { background: rgba(255, 255, 255, 0.08); }
 
 .status {
   margin-top: 14px;
@@ -204,3 +328,104 @@ footer.site {
 
 ol.steps { padding-left: 20px; }
 ol.steps li { margin-bottom: 8px; }
+
+/* ---- Home: hero + large primary actions ---------------------------------- */
+/* Visual hierarchy: the two things a visitor most needs to do (report a child,
+   report a child they found) are the biggest elements on the page. Everything
+   else — stats, notes, fine print — is deliberately smaller. */
+.hero { text-align: center; padding: 8px 4px 4px; }
+.hero h2 {
+  font-size: 2.1rem;
+  line-height: 1.2;
+  margin: 0 0 10px;
+}
+.hero .lead {
+  max-width: 640px;
+  margin: 0 auto;
+  font-size: 1.18rem;
+}
+
+.action-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+  margin: 24px 0 6px;
+}
+.action-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 26px 24px;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.action-card:hover {
+  border-color: var(--navy);
+  box-shadow: 0 6px 18px rgba(31, 58, 95, 0.12);
+  transform: translateY(-2px);
+}
+.action-card h3 { font-size: 1.45rem; margin: 0 0 8px; color: var(--navy); }
+.action-card p { margin: 0 0 16px; color: var(--muted); font-size: 0.98rem; }
+.action-card .go {
+  display: inline-block;
+  background: var(--navy);
+  color: #fff;
+  font-weight: 600;
+  padding: 11px 20px;
+  border-radius: 5px;
+  font-size: 1.02rem;
+}
+.action-card.found .go { background: var(--accent); }
+.action-card.found h3 { color: var(--accent); }
+.action-card:hover .go { filter: brightness(1.08); }
+
+/* Secondary links row (How it works / Alerts) — smaller, quieter. */
+.mini-links {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  font-size: 0.95rem;
+}
+
+/* ---- How it works / guide page ------------------------------------------- */
+.guide h2 { margin-top: 0; }
+.guide h3 {
+  font-size: 1.18rem;
+  margin: 26px 0 6px;
+  color: var(--navy);
+}
+.guide p, .guide li { font-size: 1rem; }
+.guide ul, .guide ol { padding-left: 22px; }
+.guide li { margin-bottom: 7px; }
+.guide .role-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+.guide .role-card {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--navy);
+  border-radius: 6px;
+  padding: 16px 18px;
+  background: #fafcfe;
+}
+.guide .role-card.found { border-left-color: var(--accent); }
+.guide .role-card h3 { margin-top: 0; }
+.callout {
+  background: #fbf3ef;
+  border: 1px solid #e7cdbf;
+  border-left: 4px solid var(--danger);
+  border-radius: 6px;
+  padding: 14px 16px;
+  margin-top: 18px;
+  font-size: 0.98rem;
+}
+
+@media (max-width: 540px) {
+  .hero h2 { font-size: 1.7rem; }
+  .hero .lead { font-size: 1.05rem; }
+}
