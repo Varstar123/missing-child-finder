@@ -1,14 +1,17 @@
 {
   "name": "missing-child-finder",
   "version": "1.0.0",
-  "description": "A website that uses face matching to help reunite missing children with their families.",
+  "description": "A website that uses on-device face matching to help reunite missing children with their families. Stores records in Supabase; deployable to Vercel.",
   "type": "commonjs",
   "main": "server.js",
   "scripts": {
     "setup": "node scripts/download-models.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node server.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "dotenv": "^16.4.5",
     "express": "^4.19.2"
   }
 }

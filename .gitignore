@@ -1,5 +1,11 @@
 node_modules/
+.env
+.env.local
+.vercel
+
+# Legacy local file-store (no longer used; records now live in Supabase)
 data/
 public/uploads/
-public/models/
-public/vendor/
+
+# NOTE: public/models and public/vendor are intentionally committed so the
+# face-matching library and model weights deploy as static assets on Vercel.

@@ -10,41 +10,56 @@ their families.
 
 ## How the matching works
 
-When a photo is uploaded, [face-api.js](https://github.com/vladmandic/face-api)
-(running in the browser) detects the face and produces a 128-number "face
-fingerprint". The server compares fingerprints by distance and converts that to a
-percentage: a distance of `0` is `100%`, and `0.5` (a confident same-person match)
-is `80%`. Matches at or above 80% create an alert. The threshold lives in
-`MATCH_THRESHOLD_PERCENT` in `server.js`.
+The face work runs **in the visitor's browser** with
+[face-api.js](https://github.com/vladmandic/face-api): it detects the face and
+produces a 128-number "face fingerprint." The server compares fingerprints by
+distance and turns that into a percentage (distance `0` = `100%`, `0.5` = `80%`).
+Matches at/above 80% create an alert. No photos are sent to any third-party AI
+service.
 
-## Run it
+## Architecture
+
+| Part | What it is |
+|------|------------|
+| `public/` | The website (HTML/CSS/JS) + the AI library and model weights, served as static files |
+| `api/` | Serverless functions (Vercel): `children`, `search`, `stats`, `alerts` |
+| `lib/` | Shared server code: Supabase client, match math, photo upload |
+| `server.js` | Thin **local-dev** server that mounts the same `api/` handlers (not used on Vercel) |
+| Supabase | Postgres for records (`children`, `alerts`) + Storage for photos |
+
+## One-time Supabase setup
+
+1. Create a free project at [supabase.com](https://supabase.com).
+2. Open **SQL Editor**, paste [`supabase/schema.sql`](supabase/schema.sql), and run it
+   (creates the tables and the public `photos` bucket).
+3. In **Project Settings → API**, copy the **Project URL** and the **service_role** key.
+
+## Run locally
 
 Requires [Node.js](https://nodejs.org) 18+.
 
 ```sh
-npm install        # install the web server
-npm run setup      # download the face-matching models into /public (one time)
-npm start          # start the site
+npm install
+npm run setup        # downloads the AI models into public/ (only needed once / if missing)
+cp .env.example .env # then paste your SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY
+npm start            # http://localhost:4321
 ```
 
-Then open <http://localhost:4321>. (Set a different port with `PORT=5000 npm start`.)
+## Deploy to Vercel
 
-## Project layout
-
-```
-server.js                  Web server, storage, and face comparison
-scripts/download-models.js One-time download of the AI library + models
-public/                    The website (HTML/CSS/JS) and stored photos
-data/db.json               Created at runtime — the records (gitignored)
-```
+1. Push this repo to GitHub.
+2. In Vercel, **Import** the GitHub repo (Framework Preset: **Other** — no build needed).
+3. Add two **Environment Variables**: `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`
+   (the service_role key from Supabase).
+4. **Deploy.** Vercel serves `public/` as the static site and runs `api/` as functions.
+   - If the pages don't load, set **Project Settings → Build & Development → Output Directory** to `public`.
 
 ## Notes and limits
 
 - **This assists a human search; it does not replace the police or child-protection
-  authorities.** Face matching can be wrong. Every possible match must be verified by
+  authorities.** Face matching can be wrong — every possible match must be verified by
   people before any action is taken.
-- **Alerts** are recorded and shown on the Alerts page (what the family would
-  receive). To send real email or SMS, add a mailer in `notifyFamily()` in
-  `server.js`.
-- Storage is a single JSON file, which is fine for a prototype. For real use, move to
-  a proper database and add accounts, access control, and data-protection safeguards.
+- The **service_role key is secret**: it's only used server-side (in `api/` / `server.js`)
+  and must never be exposed to the browser or committed.
+- **Alerts** are recorded and shown on the Alerts page. To deliver real email/SMS, add a
+  sender (e.g. Resend or Twilio) where noted in `api/search.js`.
