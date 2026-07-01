@@ -1,8 +1,16 @@
 // GET /api/alerts — alerts the families would have received (newest first).
+// RESTRICTED: alerts contain sensitive child/family data, so this endpoint is
+// only served to a signed-in authorized admin (see lib/auth.js). Everyone else
+// gets 401 and the page shows the login gate instead.
 const { getSupabase } = require('../lib/supabase');
+const { getSessionEmail } = require('../lib/auth');
 
 module.exports = async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
   try {
+    if (!getSessionEmail(req)) {
+      return res.status(401).json({ error: 'Not authorized. Please sign in as authorized personnel.' });
+    }
     const sb = getSupabase();
     const { data, error } = await sb
       .from('alerts')

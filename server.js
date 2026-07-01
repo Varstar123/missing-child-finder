@@ -15,6 +15,7 @@ app.all('/api/children', require('./api/children'));
 app.all('/api/search', require('./api/search'));
 app.all('/api/stats', require('./api/stats'));
 app.all('/api/alerts', require('./api/alerts'));
+app.all('/api/login', require('./api/login'));
 
 app.listen(PORT, () => {
   console.log(`Missing Child Finder (local) running at http://localhost:${PORT}`);

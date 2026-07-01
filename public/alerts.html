@@ -25,7 +25,32 @@
   </nav>
 
   <main>
-    <div class="panel">
+    <!-- Login gate — shown until an authorized admin is signed in. -->
+    <div class="panel auth-panel" id="loginPanel" hidden>
+      <div class="lock-badge" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.2" fill="currentColor" stroke="none"/></svg>
+      </div>
+      <h2>Authorized personnel only</h2>
+      <p class="lead">
+        This area contains sensitive information about children and families. Only
+        authorized personnel can log in here to view the alerts.
+      </p>
+      <form id="loginForm" class="auth-form" autocomplete="on">
+        <label for="email">Admin email</label>
+        <input type="email" id="email" name="email" autocomplete="username" required />
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" autocomplete="current-password" required />
+        <button type="submit" id="loginBtn">Log in</button>
+      </form>
+      <div class="status" id="loginStatus"></div>
+    </div>
+
+    <!-- Alerts — shown only after an authorized admin signs in. -->
+    <div class="panel" id="alertsPanel" hidden>
+      <div class="admin-bar">
+        <span class="admin-who">Signed in as <strong id="whoEmail"></strong></span>
+        <button type="button" class="btn-ghost" id="logoutBtn">Log out</button>
+      </div>
       <h2>Alerts sent to families</h2>
       <p class="lead">
         Each alert below was created when an uploaded photo strongly matched a
@@ -33,55 +58,17 @@
       </p>
       <div id="alerts"><p class="empty">Loading…</p></div>
     </div>
+
+    <p class="notice">
+      Restricted area — for authorized personnel handling verified matches only.
+      Handle every record and family contact with care and confidentiality.
+    </p>
   </main>
 
   <footer class="site">
     Missing Child Finder · Built to help families · Use responsibly
   </footer>
 
-  <script>
-    function esc(s) {
-      return String(s || '').replace(/[&<>"]/g, (c) =>
-        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-    }
-
-    fetch('/api/alerts')
-      .then((r) => r.json())
-      .then(({ alerts }) => {
-        const el = document.getElementById('alerts');
-        if (!alerts.length) {
-          el.innerHTML = '<p class="empty">No alerts yet.</p>';
-          return;
-        }
-        el.innerHTML = alerts.map((a) => {
-          const when = new Date(a.createdAt).toLocaleString();
-          const contact = a.parentEmail || a.parentPhone || 'no contact on file';
-          return (
-            '<div class="alert-card">' +
-              '<p class="meta"><span class="pct">' + a.matchPercent + '% match</span> — ' +
-                'possible sighting of <strong>' + esc(a.childName) + '</strong></p>' +
-              '<div class="photos">' +
-                '<figure><img src="' + esc(a.childPhotoUrl) + '" alt="Registered photo" />' +
-                  '<figcaption>Registered photo</figcaption></figure>' +
-                '<figure><img src="' + esc(a.foundPhotoUrl) + '" alt="Photo uploaded by finder" />' +
-                  '<figcaption>Photo uploaded by finder</figcaption></figure>' +
-              '</div>' +
-              '<p class="meta">To family: ' + esc(a.parentName) + ' (' + esc(contact) + ')</p>' +
-              (a.location ? '<p class="meta">Seen at: ' + esc(a.location) + '</p>' : '') +
-              (a.finderName || a.finderContact
-                ? '<p class="meta">Finder: ' + esc(a.finderName || '—') +
-                  (a.finderContact ? ' (' + esc(a.finderContact) + ')' : '') + '</p>'
-                : '') +
-              (a.note ? '<p class="meta">Note: ' + esc(a.note) + '</p>' : '') +
-              '<p class="meta hint">' + esc(when) + '</p>' +
-            '</div>'
-          );
-        }).join('');
-      })
-      .catch(() => {
-        document.getElementById('alerts').innerHTML =
-          '<p class="empty">Could not load alerts.</p>';
-      });
-  </script>
+  <script src="/js/alerts.js"></script>
 </body>
 </html>
