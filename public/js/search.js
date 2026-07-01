@@ -8,6 +8,7 @@ const picker = initPhotoPicker({ onChange: () => { results.innerHTML = ''; } });
 
 function setStatus(kind, msg) {
   statusEl.className = 'status ' + kind;
+  statusEl.style.display = ''; // clear any inline display:none from a previous run
   statusEl.textContent = msg;
 }
 
@@ -58,28 +59,15 @@ if (locBtn) {
   });
 }
 
+// Detect once; used to choose the reduced/disabled animation paths.
+const prefersReduced =
+  !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+// renderMatches now delegates to the dedicated result-view module, which draws
+// the match / no-match reveals (dispatch notice, family alert, confidence ring,
+// match cards). Kept as a named function so nothing else needs to change.
 function renderMatches(matches) {
-  if (matches.length === 0) {
-    results.innerHTML =
-      '<div class="status info" style="display:block">No strong match was found among the registered children. ' +
-      'Thank you for checking — please still report the child to your local authorities.</div>';
-    return;
-  }
-  let html =
-    '<div class="status success" style="display:block">A possible match was found. ' +
-    'The family has been alerted with the photo you uploaded.</div>';
-  for (const m of matches) {
-    html +=
-      '<div class="match">' +
-      '<img src="' + m.childPhotoUrl + '" alt="Registered photo of ' + m.childName + '" />' +
-      '<div>' +
-      '<div class="pct">' + m.matchPercent + '% match</div>' +
-      '<div><strong>' + m.childName + '</strong></div>' +
-      (m.ageWhenMissing ? '<div>Age when missing: ' + m.ageWhenMissing + '</div>' : '') +
-      '<div>Missing since: ' + m.dateMissing + '</div>' +
-      '</div></div>';
-  }
-  results.innerHTML = html;
+  window.renderResultView(results, matches, { reduceMotion: prefersReduced });
 }
 
 form.addEventListener('submit', async (e) => {
@@ -89,12 +77,24 @@ form.addEventListener('submit', async (e) => {
 
   submitBtn.disabled = true;
   results.innerHTML = '';
-  setStatus('info', 'Reading the photo and checking for a face… (the first time may take a few seconds)');
+
+  // The #status region is aria-live="polite"; these plain-language messages
+  // double as the screen-reader narration that runs in parallel with the
+  // visual (aria-hidden) scan overlay.
+  setStatus('info', 'Analyzing the photo and comparing against registered children…');
+
+  // Mount the biometric scan overlay over the user's ACTUAL uploaded photo.
+  const frame = document.getElementById('previewFrame');
+  const scan = (frame && window.createScanOverlay) ? window.createScanOverlay(frame) : null;
+  if (scan) scan.start();
 
   try {
+    // ---- Real async work (UNCHANGED logic; no progress events available) ----
     const { descriptor, dataUrl } = await describeFace(file);
 
     setStatus('info', 'Comparing against registered children…');
+    if (scan) scan.compare();               // advance HUD to "Comparing…"
+
     const res = await fetch('/api/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -110,11 +110,25 @@ form.addEventListener('submit', async (e) => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Search failed.');
 
-    statusEl.className = 'status';
+    // ---- Persist-until-resolved + minimum duration -----------------------
+    // The real work is done; finish() waits out any remaining MIN_DURATION,
+    // then fades the overlay out. The overlay can NEVER end before this point,
+    // because finish() is only CALLED here, after both awaits above.
+    if (scan) await scan.finish();
+
+    // Hide the text status visually; keep a concise spoken summary in the
+    // live region for screen-reader users (set BEFORE hiding so it announces).
+    setStatus('info',
+      data.matches.length
+        ? 'A possible match was found. The family has been alerted and an alert ' +
+          'was dispatched to the nearest police station.'
+        : 'No strong match was found. Please still contact your local authorities.');
     statusEl.style.display = 'none';
+
     renderMatches(data.matches);
   } catch (err) {
-    setStatus('error', err.message);
+    if (scan) scan.abort();                 // remove the overlay immediately on error
+    setStatus('error', err.message);        // calm error styling, never a buzzer
   } finally {
     submitBtn.disabled = false;
   }
