@@ -42,6 +42,23 @@
     const preview = document.getElementById('preview');
     const clearBtn = document.getElementById('clearPhotoBtn');
 
+    // ---- Optional enhanced-UI elements (present only on upgraded pages) ----
+    const dropzone     = document.getElementById('dropzone');
+    const previewShell = document.getElementById('previewShell');
+    const pmName       = document.getElementById('pmName');
+    const pmSize       = document.getElementById('pmSize');
+
+    const supportsDnD = 'draggable' in document.createElement('div') &&
+                        'ondrop' in window && !!window.FileReader;
+    if (supportsDnD && dropzone) document.documentElement.classList.add('has-dnd');
+
+    function formatSize(bytes) {
+      if (!bytes && bytes !== 0) return '';
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
     let currentFile = null;
     let previewUrl = null;
 
@@ -56,10 +73,21 @@
         preview.src = previewUrl;
         preview.style.display = 'block';
         if (clearBtn) clearBtn.style.display = 'inline-block';
+
+        // Enhanced UI (only if the page opted in).
+        if (previewShell) previewShell.hidden = false;
+        if (pmName) pmName.textContent = currentFile.name || 'photo';
+        if (pmSize) pmSize.textContent = formatSize(currentFile.size);
+        if (dropzone) dropzone.setAttribute('data-empty', 'false');
       } else {
         preview.removeAttribute('src');
         preview.style.display = 'none';
         if (clearBtn) clearBtn.style.display = 'none';
+
+        if (previewShell) previewShell.hidden = true;
+        if (pmName) pmName.textContent = '';
+        if (pmSize) pmSize.textContent = '';
+        if (dropzone) dropzone.setAttribute('data-empty', 'true');
       }
       onChange(currentFile);
     }
@@ -71,6 +99,37 @@
     fileInput.addEventListener('change', function () {
       if (fileInput.files && fileInput.files[0]) setFile(fileInput.files[0]);
     });
+
+    // ---- Drag & drop (progressive enhancement) -----------------------------
+    if (supportsDnD && dropzone) {
+      const stop = function (e) { e.preventDefault(); e.stopPropagation(); };
+      ['dragenter', 'dragover'].forEach(function (ev) {
+        dropzone.addEventListener(ev, function (e) {
+          stop(e);
+          dropzone.classList.add('is-dragover');
+        });
+      });
+      ['dragleave', 'dragend'].forEach(function (ev) {
+        dropzone.addEventListener(ev, function (e) {
+          stop(e);
+          // Only clear when the pointer truly leaves the dropzone.
+          if (ev === 'dragend' || !dropzone.contains(e.relatedTarget)) {
+            dropzone.classList.remove('is-dragover');
+          }
+        });
+      });
+      dropzone.addEventListener('drop', function (e) {
+        stop(e);
+        dropzone.classList.remove('is-dragover');
+        const dt = e.dataTransfer;
+        if (!dt || !dt.files || !dt.files.length) return;
+        const f = dt.files[0];
+        if (f.type && f.type.indexOf('image/') !== 0) return; // images only
+        fileInput.value = '';
+        if (captureInput) captureInput.value = '';
+        setFile(f);
+      });
+    }
 
     if (clearBtn) {
       clearBtn.addEventListener('click', function () {

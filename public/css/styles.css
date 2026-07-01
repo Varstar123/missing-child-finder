@@ -1,4 +1,5 @@
-/* Calm, serious styling. No animations. Readable and accessible. */
+/* Calm, serious styling. Motion is used deliberately and sparingly, and is
+   fully disabled under prefers-reduced-motion. Readable and accessible. */
 :root {
   --navy: #1f3a5f;
   --navy-dark: #16293f;
@@ -10,6 +11,20 @@
   --accent: #2f6f4f;      /* calm green for confirm/positive */
   --danger: #8a2b2b;      /* muted red for the serious notices */
   --focus: #2f6f4f;
+
+  /* ---- Upgrade additions (biometric / institutional) ---- */
+  --scan-cyan: #4db6c4;                 /* cool diagnostic accent — scan beam   */
+  --scan-cyan-soft: rgba(77,182,196,0.16);
+  --scan-cyan-line: rgba(77,182,196,0.85);
+  --navy-glass: rgba(22,41,63,0.72);    /* scrim over the photo during scanning */
+  --hud-ink: #eaf4f6;
+  --hud-dim: #9fc4cc;
+  --alert-amber: #b9772a;               /* dispatch notice: urgent yet sober    */
+  --alert-amber-bg: #fbf2e6;
+  --alert-amber-line: #e6cda6;
+  --ok-ring-track: #dfe7e2;             /* confidence-ring empty track          */
+  --ease-soft: cubic-bezier(.22,.61,.36,1);
+  --ease-emph: cubic-bezier(.16,.84,.44,1);
 }
 
 * { box-sizing: border-box; }
@@ -428,4 +443,583 @@ ol.steps li { margin-bottom: 8px; }
 @media (max-width: 540px) {
   .hero h2 { font-size: 1.7rem; }
   .hero .lead { font-size: 1.05rem; }
+}
+
+/* ========================================================================== *
+ *  UPGRADE: dropzone, preview shell, biometric scan overlay, result reveals.  *
+ *  All additive. Motion is intentional and disabled under reduced-motion      *
+ *  (see the dedicated block at the very bottom).                              *
+ * ========================================================================== */
+
+/* ---- Drag & drop dropzone (wraps the existing choose/take buttons) -------- */
+.dropzone {
+  position: relative;
+  margin-top: 6px;
+  border: 1.5px dashed var(--line);
+  border-radius: 10px;
+  padding: 16px;
+  background: #fbfdfe;
+  transition: border-color .18s var(--ease-soft),
+              background .18s var(--ease-soft),
+              box-shadow .18s var(--ease-soft);
+}
+.dropzone.is-dragover {
+  border-color: var(--scan-cyan);
+  background: var(--scan-cyan-soft);
+  box-shadow: 0 0 0 4px var(--scan-cyan-soft);
+}
+/* Once a photo is chosen the dropzone collapses its prompt but stays a target. */
+.dropzone[data-empty="false"] { padding: 12px; opacity: .9; }
+.dz-drag-hint { display: none; }              /* only advertise drag where it works */
+.has-dnd .dz-drag-hint { display: inline; }
+
+/* ---- Preview shell + polished reveal + meta ------------------------------ */
+.preview-shell[hidden] { display: none; }
+.preview-shell {
+  margin-top: 14px;
+  max-width: 300px;
+  animation: previewReveal .45s var(--ease-emph) both;
+}
+.preview-frame {
+  position: relative;                         /* anchor for the scan overlay */
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #0b121c;                         /* dark matte so letterboxing reads calm */
+  line-height: 0;
+}
+/* More specific than the legacy `.preview` rule, so it wins inside the shell.
+   The picker still toggles display:block/none on #preview, which is fine. */
+.preview-frame .preview {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+.preview-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: .82rem;
+  color: var(--muted);
+  margin: 8px 2px 6px;
+}
+.preview-meta .pm-name {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%;
+  font-weight: 600; color: var(--ink);
+}
+/* Inside the shell, the remove button is always visible (shell controls
+   visibility), overriding the legacy `#clearPhotoBtn { display:none }`. */
+.preview-shell #clearPhotoBtn { display: inline-block; margin-top: 4px; }
+
+@keyframes previewReveal {
+  from { opacity: 0; transform: translateY(8px) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ========================================================================== *
+ *  BIOMETRIC SCAN OVERLAY (mounted inside .preview-frame, over the photo)     *
+ * ========================================================================== */
+.scan-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(11,18,28,.12) 0%, var(--navy-glass) 100%);
+  -webkit-backdrop-filter: saturate(1.05) blur(.5px);
+  backdrop-filter: saturate(1.05) blur(.5px);
+  opacity: 0;
+  transition: opacity .3s var(--ease-soft);
+  pointer-events: none;
+}
+.scan-overlay.is-active { opacity: 1; }
+
+/* Faint instrument grid. */
+.scan-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(var(--scan-cyan-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--scan-cyan-soft) 1px, transparent 1px);
+  background-size: 26px 26px;
+  opacity: .5;
+  animation: gridDrift 6s linear infinite;
+}
+@keyframes gridDrift {
+  from { background-position: 0 0, 0 0; }
+  to   { background-position: 0 26px, 26px 0; }
+}
+
+/* Sweeping diagnostic beam. */
+.scan-beam {
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 38%;
+  background: linear-gradient(180deg,
+      rgba(77,182,196,0) 0%,
+      rgba(77,182,196,.10) 40%,
+      rgba(77,182,196,.55) 88%,
+      rgba(255,255,255,.85) 100%);
+  box-shadow: 0 2px 14px 2px rgba(77,182,196,.45);
+  mix-blend-mode: screen;
+  animation: scanSweep 2.2s var(--ease-soft) infinite;
+}
+@keyframes scanSweep {
+  0%   { transform: translateY(-40%); opacity: 0; }
+  12%  { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { transform: translateY(264%); opacity: 0; }
+}
+
+/* Lock-on corner brackets framing the (assumed central) face region. */
+.scan-brackets {
+  position: absolute;
+  inset: 14%;
+  animation: bracketPulse 2.2s ease-in-out infinite;
+}
+.scan-brackets span {
+  position: absolute; width: 20px; height: 20px;
+  border: 2px solid rgba(255,255,255,.9);
+  filter: drop-shadow(0 0 4px var(--scan-cyan-soft));
+}
+.scan-brackets .tl { top: 0; left: 0;  border-right: 0; border-bottom: 0; border-top-left-radius: 6px; }
+.scan-brackets .tr { top: 0; right: 0; border-left: 0;  border-bottom: 0; border-top-right-radius: 6px; }
+.scan-brackets .bl { bottom: 0; left: 0;  border-right: 0; border-top: 0; border-bottom-left-radius: 6px; }
+.scan-brackets .br { bottom: 0; right: 0; border-left: 0; border-top: 0;  border-bottom-right-radius: 6px; }
+@keyframes bracketPulse {
+  0%, 100% { opacity: .55; transform: scale(1); }
+  50%      { opacity: .95; transform: scale(1.012); }
+}
+
+/* Center reticle dot that breathes. */
+.scan-reticle {
+  position: absolute; top: 46%; left: 50%;
+  width: 8px; height: 8px; margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: var(--scan-cyan-line);
+  box-shadow: 0 0 0 6px rgba(77,182,196,0.18);
+  animation: reticleBreathe 1.6s ease-in-out infinite;
+}
+@keyframes reticleBreathe {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.7); opacity: .5; }
+}
+
+/* HUD readout pinned to the bottom of the frame (monospace forensic data). */
+.scan-readout {
+  position: relative;
+  z-index: 2;
+  padding: 12px 14px;
+  background: linear-gradient(0deg, rgba(11,18,28,.85), rgba(11,18,28,0));
+  color: var(--hud-ink);
+}
+.scan-phase-row { display: flex; align-items: center; gap: 10px; }
+.scan-spinner { flex: none; width: 30px; height: 30px; }
+.scan-spinner circle { fill: none; stroke-width: 3; }
+.scan-spinner .track { stroke: rgba(255,255,255,.22); }
+.scan-spinner .ind {
+  stroke: var(--scan-cyan);
+  stroke-linecap: round;
+  stroke-dasharray: 26 60;                     /* arc / gap on r≈12 circle */
+  transform-origin: 50% 50%;
+  animation: ringSpin 1.1s linear infinite;
+}
+@keyframes ringSpin { to { transform: rotate(360deg); } }
+.scan-phase { font-size: .92rem; font-weight: 600; letter-spacing: .01em; line-height: 1.2; }
+.scan-sub   { font-size: .74rem; color: var(--hud-dim); margin-top: 1px; line-height: 1.2; }
+
+/* Monospace data lines (descriptor hex + vector counter + indeterminate bar). */
+.scan-data {
+  margin-top: 8px;
+  font: 600 10.5px/1.6 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  letter-spacing: .02em;
+}
+.scan-data .d-row { display: flex; justify-content: space-between; gap: 10px; }
+.scan-data .d-key { color: var(--hud-dim); }
+.scan-data .d-val { color: var(--scan-cyan); }
+.scan-bar {
+  position: relative; height: 2px; margin-top: 6px;
+  background: rgba(77,182,196,0.2); overflow: hidden; border-radius: 2px;
+}
+.scan-bar::after {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 35%;
+  background: var(--scan-cyan-line);
+  box-shadow: 0 0 8px var(--scan-cyan-line);
+  animation: scanIndeterminate 1.5s ease-in-out infinite;
+}
+@keyframes scanIndeterminate {
+  0%   { left: -35%; }
+  100% { left: 100%; }
+}
+
+/* ========================================================================== *
+ *  RESULT REVEAL — shared                                                     *
+ * ========================================================================== */
+.result-view { margin-top: 18px; }
+.result-view.reveal { animation: resultReveal .5s var(--ease-emph) both; }
+@keyframes resultReveal {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ---- Match-found header (single confident check-draw) -------------------- */
+.match-head {
+  display: flex; align-items: center; gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid #c5dccb;
+  border-left: 4px solid var(--accent);
+  background: #f1f7f3;
+  border-radius: 8px;
+}
+.match-check { flex: none; width: 46px; height: 46px; }
+.match-check circle {
+  fill: none; stroke: var(--accent); stroke-width: 3;
+  stroke-dasharray: 150; stroke-dashoffset: 150;
+  animation: drawRing .55s var(--ease-emph) forwards;
+}
+.match-check path {
+  fill: none; stroke: var(--accent); stroke-width: 3.4;
+  stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 40; stroke-dashoffset: 40;
+  animation: drawCheck .4s var(--ease-emph) .42s forwards;
+}
+@keyframes drawRing  { to { stroke-dashoffset: 0; } }
+@keyframes drawCheck { to { stroke-dashoffset: 0; } }
+.match-head h3 { margin: 0; font-size: 1.18rem; color: var(--accent); }
+.match-head p  { margin: 2px 0 0; font-size: .92rem; color: var(--ink); }
+
+/* ---- Dispatch notice (the client-required message) ----------------------- */
+.dispatch-notice {
+  display: flex; align-items: flex-start; gap: 14px;
+  margin-top: 14px; padding: 16px 18px;
+  background: var(--alert-amber-bg);
+  border: 1px solid var(--alert-amber-line);
+  border-left: 4px solid var(--alert-amber);
+  border-radius: 8px;
+  animation: dispatchIn .45s var(--ease-emph) .35s both;
+}
+@keyframes dispatchIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+.dispatch-icon { flex: none; width: 30px; height: 30px; color: var(--alert-amber); }
+.dispatch-icon .ping {                          /* one calm radar pulse, not a strobe */
+  transform-origin: center;
+  animation: dispatchPing 2.4s var(--ease-soft) infinite;
+}
+@keyframes dispatchPing {
+  0%   { opacity: .5; transform: scale(.85); }
+  60%  { opacity: 0;  transform: scale(1.5); }
+  100% { opacity: 0;  transform: scale(1.5); }
+}
+.dispatch-badge {
+  display: inline-block; font-size: .68rem; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--alert-amber); background: #fff;
+  border: 1px solid var(--alert-amber-line);
+  border-radius: 999px; padding: 2px 9px; margin-bottom: 6px;
+}
+.dispatch-title {
+  font-size: 1.04rem; font-weight: 700; color: var(--ink); margin: 0;
+  letter-spacing: .01em; text-transform: uppercase;
+}
+.dispatch-sub { font-size: .88rem; color: var(--muted); margin: 4px 0 0; }
+.dispatch-ref {
+  font-size: .76rem; color: var(--muted); margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Family-alerted confirmation row ------------------------------------- */
+.family-alerted {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 12px; padding: 12px 14px;
+  border-radius: 8px; font-size: .95rem; font-weight: 600;
+  background: #ecf3ee; border: 1px solid #c5dccb; color: var(--accent);
+}
+.family-alerted svg { flex: none; }
+
+/* ---- Confidence ring + count-up ------------------------------------------ */
+.confidence {
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+  margin-top: 16px; padding: 16px 18px;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+}
+.conf-ring { flex: none; width: 96px; height: 96px; position: relative; }
+.conf-ring svg { width: 96px; height: 96px; transform: rotate(-90deg); }
+.conf-ring circle { fill: none; stroke-width: 9; }
+.conf-ring .track { stroke: var(--ok-ring-track); }
+.conf-ring .val {
+  stroke: var(--accent); stroke-linecap: round;
+  stroke-dasharray: 264;       /* MUST equal JS CIRC (2π·42 ≈ 263.9). Keep in sync. */
+  stroke-dashoffset: 264;      /* JS animates this down per frame */
+}
+.conf-num {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; font-weight: 700; color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.conf-text h4 { margin: 0 0 2px; font-size: 1rem; color: var(--ink); }
+.conf-text p  { margin: 0; font-size: .88rem; color: var(--muted); }
+
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes mcRing { to { stroke-dashoffset: var(--mc-ring-target, 0); } }
+
+/* ---- Premium match result card — HERO DOSSIER ---------------------------- */
+.mc {
+  position: relative;
+  display: grid;
+  grid-template-columns: 176px 1fr;
+  gap: 30px;
+  align-items: stretch;
+  margin-top: 20px;
+  padding: 28px 30px 28px 34px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7faf8 100%);
+  border: 1px solid #d3e3da;
+  border-radius: 18px;
+  box-shadow:
+    0 1px 2px rgba(16,40,28,.04),
+    0 18px 44px -20px rgba(31,58,95,.26);
+  transition: transform .24s var(--ease-soft), box-shadow .24s var(--ease-soft);
+}
+.mc::before {                                   /* navy→green authority rail */
+  content: "";
+  position: absolute; left: 0; top: 0; bottom: 0; width: 6px;
+  background: linear-gradient(180deg, var(--navy) 0%, var(--accent) 100%);
+  border-top-left-radius: 18px; border-bottom-left-radius: 18px;
+}
+.mc:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 2px 4px rgba(16,40,28,.05),
+    0 26px 56px -22px rgba(31,58,95,.34);
+}
+.mc.card-in { animation: cardIn .5s var(--ease-emph) both; }
+
+/* --- Hero portrait (the face dominates) --- */
+.mc-photo {
+  position: relative;
+  width: 176px; height: 232px;            /* 3:4 — ~3.8x the old 104px thumbnail */
+  flex: none;
+}
+.mc-photo img {
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: center 28%;   /* bias toward the face */
+  display: block;
+  border-radius: 14px;
+  background: #e7edf2;
+  border: 1px solid #fff;
+  box-shadow:
+    0 0 0 1px #cbded3,
+    0 14px 30px -14px rgba(31,58,95,.45);
+}
+.mc-photo::after {                          /* soft navy vignette for depth */
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(22,41,63,0) 58%, rgba(22,41,63,.30) 100%);
+  pointer-events: none;
+}
+
+/* Score medallion with a thin CSS progress ring, anchored to the portrait. */
+.mc-score {
+  position: absolute; right: -16px; bottom: -16px;
+  width: 68px; height: 68px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 32% 26%, #4aa177, var(--accent) 58%, #234f37);
+  border: 3px solid #fff;
+  box-shadow: 0 8px 18px -5px rgba(40,92,67,.55);
+  z-index: 2;
+}
+.mc-score svg {                             /* ring drawn around the disc */
+  position: absolute; inset: -3px;          /* overlap the white border */
+  width: calc(100% + 6px); height: calc(100% + 6px);
+  transform: rotate(-90deg);
+}
+.mc-score svg circle { fill: none; stroke-width: 3.5; }
+.mc-score .ring-track { stroke: rgba(255,255,255,.28); }
+.mc-score .ring-val {
+  stroke: #fff; stroke-linecap: round;
+  stroke-dasharray: 207;                    /* 2π·33 ≈ 207.3 — keep in sync w/ r=33 */
+  stroke-dashoffset: 207;
+  animation: mcRing 1.1s var(--ease-emph) .2s forwards;
+}
+.mc-score b {
+  position: relative; z-index: 1;
+  color: #fff; font-size: 1.18rem; font-weight: 800;
+  font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+}
+
+/* --- Body (generous info stack) --- */
+.mc-body {
+  flex: 1 1 auto; min-width: 0;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.mc-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.mc-name {
+  margin: 0; font-size: 1.6rem; font-weight: 700; color: var(--ink);
+  letter-spacing: -.02em; line-height: 1.15;
+}
+.mc-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent); background: #e7f3ec; border: 1px solid #c2dac9;
+  border-radius: 999px; padding: 4px 11px;
+}
+.mc-chip::before {                          /* small status dot */
+  content: ""; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent); flex: none;
+}
+
+/* Match-strength bar — taller, with a labelled live value. */
+.mc-strength { margin: 16px 0 20px; }
+.mc-bar-top {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 8px;
+}
+.mc-bar-lbl {
+  font-size: .82rem; color: var(--muted); letter-spacing: .02em; font-weight: 600;
+}
+.mc-bar-pct {
+  font-size: .9rem; color: var(--accent); font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.mc-bar {
+  height: 10px; border-radius: 999px; background: #e6edf0; overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(16,40,28,.07);
+}
+.mc-bar > i {
+  display: block; height: 100%; width: 0; border-radius: 999px;
+  background: linear-gradient(90deg, #4aa177, var(--accent));
+  box-shadow: 0 0 8px rgba(47,111,79,.45);
+  transition: width 1.1s var(--ease-emph);
+}
+
+/* Dossier stat tiles — icon tile · label · value. */
+.mc-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.mc-row {
+  display: grid; grid-template-columns: 42px 1fr; align-items: center; gap: 13px;
+  padding: 11px 14px;
+  background: #f5f8fb;
+  border: 1px solid #e2e9f0;
+  border-radius: 11px;
+}
+.mc-ico {                                   /* navy tinted tile (default) */
+  width: 42px; height: 42px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(31,58,95,.07);
+  border: 1px solid rgba(31,58,95,.12);
+  color: var(--navy);
+}
+.mc-row.is-accent .mc-ico {                 /* green tinted tile variant */
+  background: rgba(47,111,79,.09);
+  border-color: rgba(47,111,79,.16);
+  color: var(--accent);
+}
+.mc-ico svg { width: 20px; height: 20px; }
+.mc-cell { display: flex; flex-direction: column; min-width: 0; }
+.mc-k {
+  font-size: .72rem; color: var(--muted); font-weight: 600;
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.mc-v {
+  font-size: 1.05rem; color: var(--ink); font-weight: 700;
+  font-variant-numeric: tabular-nums; line-height: 1.25;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* --- Card responsive: stack portrait above details on narrow screens --- */
+@media (max-width: 540px) {
+  .mc {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 24px;
+    padding: 22px 18px 24px 22px;
+    text-align: left;
+  }
+  .mc-photo { width: 168px; height: 224px; }   /* keep 3:4, still large */
+  .mc-score { width: 60px; height: 60px; right: -10px; bottom: -10px; }
+  .mc-score b { font-size: 1.02rem; }
+  .mc-body { width: 100%; }
+  .mc-head { justify-content: flex-start; }
+  .mc-name { font-size: 1.42rem; }
+  .mc-meta { grid-template-columns: 1fr; }
+}
+
+/* ---- No-match (calm, never a "fail" state) ------------------------------- */
+.no-match .nomatch-head {
+  display: flex; align-items: center; gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-left: 4px solid #9fb1c2;               /* neutral slate, not danger red */
+  background: #f7f9fb;
+  border-radius: 8px;
+}
+.nomatch-icon { flex: none; width: 44px; height: 44px; opacity: .9; }
+.no-match h3 { margin: 0; font-size: 1.12rem; color: var(--ink); }
+.no-match .nomatch-head p { margin: 3px 0 0; font-size: .92rem; color: var(--muted); }
+.nomatch-advice {
+  margin: 14px 2px 0; font-size: .92rem; color: var(--ink);
+  padding: 12px 14px; background: #eef3f8; border: 1px solid #cfdbe8; border-radius: 6px;
+}
+
+/* ---- Responsive ---------------------------------------------------------- */
+@media (max-width: 540px) {
+  .preview-shell { max-width: 100%; }
+  .confidence { gap: 14px; }
+  .conf-ring, .conf-ring svg { width: 84px; height: 84px; }
+  .conf-num { font-size: 1.3rem; }
+  .dispatch-notice { padding: 14px; gap: 10px; }
+  .dispatch-title { font-size: .95rem; }
+}
+
+/* ========================================================================== *
+ *  prefers-reduced-motion — disable / replace ALL motion above               *
+ * ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  /* Picker / preview */
+  .preview-shell { animation: none !important; }
+  .dropzone { transition: none !important; }
+
+  /* Scan overlay: kill looping motion, keep a calm static "Analyzing" plate */
+  .scan-overlay { transition: none !important; }
+  .scan-grid, .scan-beam, .scan-brackets, .scan-reticle,
+  .scan-spinner .ind, .scan-bar::after,
+  .dispatch-icon .ping {
+    animation: none !important;
+  }
+  .scan-beam { display: none; }
+  .scan-spinner .ind { stroke-dasharray: 999; }   /* static full ring */
+  .scan-bar::after { left: 0; width: 100%; }
+  .dispatch-icon .ping { opacity: .5; }
+
+  /* Reveals appear instantly */
+  .result-view.reveal, .dispatch-notice, .mc.card-in {
+    animation: none !important; opacity: 1 !important; transform: none !important;
+  }
+  .match-check circle, .match-check path {
+    animation: none !important; stroke-dashoffset: 0 !important;
+  }
+  .conf-ring .val { transition: none !important; }
+  .mc:hover { transform: none; }
+  .mc-bar > i { transition: none !important; }
+  .mc-score .ring-val {
+    animation: none !important;
+    stroke-dashoffset: var(--mc-ring-target, 0) !important;   /* snap ring to final */
+  }
+
+  /* Tame the existing home-card hover lift too */
+  .action-card:hover { transform: none; }
 }
