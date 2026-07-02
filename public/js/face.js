@@ -60,11 +60,55 @@ function buildStages() {
   return stages;
 }
 
+// The face-api.js library global (`faceapi`) is provided by the 1.3MB vendor
+// script loaded with a <script> tag in the page. If that request fails or is
+// still in flight (slow/flaky network, a blocked or truncated download, or a
+// stale cached page that predates the tag), `faceapi` is undefined and every
+// call throws the cryptic "faceapi is not defined". To be resilient we verify
+// the global is present and, if not, (re)load the library on demand before use
+// — and surface a clear, actionable message if it still cannot load.
+const FACEAPI_SRC = '/vendor/face-api.js';
+let libraryReady = null;
+
+function faceApiPresent() {
+  return typeof faceapi !== 'undefined' && faceapi && faceapi.nets;
+}
+
+function loadFaceApiLibrary() {
+  if (faceApiPresent()) return Promise.resolve();
+  if (libraryReady) return libraryReady;
+  libraryReady = new Promise((resolve, reject) => {
+    const done = () => {
+      if (faceApiPresent()) resolve();
+      else
+        reject(new Error(
+          'The face-recognition library did not load. Please check your ' +
+          'internet connection, then refresh this page and try again.'
+        ));
+    };
+    const script = document.createElement('script');
+    script.src = FACEAPI_SRC;
+    script.async = false;
+    script.onload = done;
+    script.onerror = () => {
+      libraryReady = null; // allow a later retry
+      reject(new Error(
+        'Could not load the face-recognition library. Please check your ' +
+        'connection and refresh this page, then try again.'
+      ));
+    };
+    document.head.appendChild(script);
+  });
+  return libraryReady;
+}
+
 let modelsReady = null;
 
 async function loadModels() {
   if (!modelsReady) {
     modelsReady = (async () => {
+      // Make sure the library global exists before touching faceapi.nets.
+      await loadFaceApiLibrary();
       await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
       // TinyFaceDetector is a small (~190KB) fallback detector. If its weights
       // are missing we still want SSD detection to work, so absence is
