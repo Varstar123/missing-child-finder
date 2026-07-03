@@ -940,6 +940,21 @@ ol.steps li { margin-bottom: 8px; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
+/* Wider age-gap (lower-confidence) match — amber accents + explanatory note. */
+.mc.is-wide::before { background: linear-gradient(180deg, var(--alert-amber), #d79a4e); }
+.mc-chip.is-wide {
+  color: var(--alert-amber); background: var(--alert-amber-bg);
+  border-color: var(--alert-amber-line);
+}
+.mc-chip.is-wide::before { background: var(--alert-amber); }
+.mc-note {
+  margin: 0 0 14px; padding: 10px 12px;
+  font-size: .82rem; line-height: 1.4; color: #7a5320;
+  background: var(--alert-amber-bg);
+  border: 1px solid var(--alert-amber-line);
+  border-radius: 8px;
+}
+
 /* --- Card responsive: stack portrait above details on narrow screens --- */
 @media (max-width: 540px) {
   .mc {

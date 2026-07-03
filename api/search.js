@@ -1,7 +1,7 @@
 // POST /api/search — compare an uploaded photo against every registered child.
 const { getSupabase } = require('../lib/supabase');
 const { uploadImage } = require('../lib/storage');
-const { euclideanDistance, distanceToPercent, MATCH_THRESHOLD_PERCENT } = require('../lib/match');
+const { euclideanDistance, distanceToPercent, MATCH_THRESHOLD_PERCENT, ageAwareThreshold } = require('../lib/match');
 const { notifyGuardian } = require('../lib/notify');
 
 module.exports = async (req, res) => {
@@ -19,10 +19,16 @@ module.exports = async (req, res) => {
       return res.json({ matches: [], threshold: MATCH_THRESHOLD_PERCENT });
     }
 
-    // Score every child; keep those at/above the threshold, strongest first.
+    // Score every child. The keep-threshold is age-aware: it relaxes below 80%
+    // as the child has been missing longer (more for younger children), so true
+    // matches that faded with age aren't silently dropped. Strongest first.
     const scored = children
-      .map((c) => ({ child: c, percent: distanceToPercent(euclideanDistance(descriptor, c.descriptor)) }))
-      .filter((s) => s.percent >= MATCH_THRESHOLD_PERCENT)
+      .map((c) => {
+        const percent = distanceToPercent(euclideanDistance(descriptor, c.descriptor));
+        const threshold = ageAwareThreshold(c.date_missing, c.age_when_missing);
+        return { child: c, percent, threshold, strong: percent >= MATCH_THRESHOLD_PERCENT };
+      })
+      .filter((s) => s.percent >= s.threshold)
       .sort((a, b) => b.percent - a.percent);
 
     if (scored.length === 0) {
@@ -55,8 +61,12 @@ module.exports = async (req, res) => {
     // Deliver the alert to each matched family by email and/or SMS. This is
     // best-effort: a delivery failure (or no provider configured) must not fail
     // the search — the alert is already recorded and shown on the Alerts page.
+    // Only STRONG matches (>= 80%) auto-notify the family; wider age-gap, lower-
+    // confidence matches are recorded for admin review but not sent, to avoid
+    // alarming families over likely false positives.
     await Promise.all(
       (inserted || []).map(async (row) => {
+        if (row.match_percent < MATCH_THRESHOLD_PERCENT) return;
         try {
           const result = await notifyGuardian({
             childName: row.child_name,
@@ -83,6 +93,9 @@ module.exports = async (req, res) => {
       dateMissing: s.child.date_missing,
       childPhotoUrl: s.child.photo_url,
       matchPercent: s.percent,
+      // true when kept only via the relaxed age-gap threshold (below 80%): a
+      // lower-confidence match the UI flags for careful human verification.
+      wideAgeGap: !s.strong,
     }));
     res.json({ matches, threshold: MATCH_THRESHOLD_PERCENT });
   } catch (err) {

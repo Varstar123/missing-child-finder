@@ -43,14 +43,59 @@
     '<rect x="3.5" y="4.5" width="17" height="16" rx="2.5"/>' +
     '<path d="M3.5 9.5h17M8 2.5v4M16 2.5v4"/>' +
     '<circle cx="12" cy="14.5" r="1.6" fill="currentColor" stroke="none"/></svg>';
+  var ICON_TIME =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>';
+
+  // "4 yrs 2 mo" style duration from a millisecond span.
+  function fmtDuration(ms) {
+    var months = Math.floor(ms / (30.44 * 24 * 3600 * 1000));
+    if (months < 1) return 'under a month';
+    var y = Math.floor(months / 12), mo = months % 12, parts = [];
+    if (y) parts.push(y + (y > 1 ? ' yrs' : ' yr'));
+    if (mo) parts.push(mo + ' mo');
+    return parts.join(' ');
+  }
+
+  // Time since the child went missing + an estimated current age (age when
+  // missing + years elapsed). Returns null if the date is unusable.
+  function ageInfo(dateMissing, ageWhenMissing) {
+    var then = new Date(dateMissing);
+    if (isNaN(then.getTime())) return null;
+    var ms = Date.now() - then.getTime();
+    if (ms < 0) ms = 0;
+    var out = { elapsed: fmtDuration(ms), currentAge: null };
+    var a = Number(ageWhenMissing);
+    if (isFinite(a) && a >= 0) out.currentAge = Math.round(a + ms / (365.25 * 24 * 3600 * 1000));
+    return out;
+  }
+
+  // One dossier stat tile: icon tile · label · value.
+  function tile(icon, label, value, accent) {
+    return '<span class="mc-row' + (accent ? ' is-accent' : '') + '">' +
+      '<span class="mc-ico">' + icon + '</span>' +
+      '<span class="mc-cell"><span class="mc-k">' + label + '</span>' +
+      '<span class="mc-v">' + value + '</span></span></span>';
+  }
 
   function cardsHtml(matches, reduceMotion) {
     var html = '';
     matches.forEach(function (m, i) {
       var pct = Math.max(0, Math.min(100, Number(m.matchPercent) || 0));
       var delay = reduceMotion ? 0 : (0.55 + i * 0.1);
+      var wide = !!m.wideAgeGap; // kept only via the relaxed age-gap threshold
+      var ai = ageInfo(m.dateMissing, m.ageWhenMissing);
+
+      var meta =
+        (m.ageWhenMissing ? tile(ICON_AGE, 'Age when missing', esc(m.ageWhenMissing), false) : '') +
+        tile(ICON_DATE, 'Missing since', esc(m.dateMissing), true) +
+        (ai ? tile(ICON_TIME, 'Time missing', esc(ai.elapsed), false) : '') +
+        (ai && ai.currentAge != null
+          ? tile(ICON_AGE, 'Est. age now', '~' + esc(ai.currentAge) + ' yrs', true) : '');
+
       html +=
-        '<article class="mc card-in" style="animation-delay:' + delay + 's">' +
+        '<article class="mc card-in' + (wide ? ' is-wide' : '') + '" style="animation-delay:' + delay + 's">' +
           '<div class="mc-photo">' +
             '<img src="' + esc(m.childPhotoUrl) + '" alt="Registered photo of ' +
               esc(m.childName) + '" />' +
@@ -66,7 +111,8 @@
           '<div class="mc-body">' +
             '<div class="mc-head">' +
               '<h4 class="mc-name">' + esc(m.childName) + '</h4>' +
-              '<span class="mc-chip">Possible match</span>' +
+              '<span class="mc-chip' + (wide ? ' is-wide' : '') + '">' +
+                (wide ? 'Wider age gap' : 'Possible match') + '</span>' +
             '</div>' +
             '<div class="mc-strength">' +
               '<div class="mc-bar-top">' +
@@ -76,24 +122,12 @@
               '<div class="mc-bar"><i data-pct="' + pct + '" style="width:' +
                 (reduceMotion ? pct : 0) + '%"></i></div>' +
             '</div>' +
-            '<div class="mc-meta">' +
-              (m.ageWhenMissing
-                ? '<span class="mc-row">' +
-                    '<span class="mc-ico">' + ICON_AGE + '</span>' +
-                    '<span class="mc-cell">' +
-                      '<span class="mc-k">Age when missing</span>' +
-                      '<span class="mc-v">' + esc(m.ageWhenMissing) + '</span>' +
-                    '</span>' +
-                  '</span>'
-                : '') +
-              '<span class="mc-row is-accent">' +
-                '<span class="mc-ico">' + ICON_DATE + '</span>' +
-                '<span class="mc-cell">' +
-                  '<span class="mc-k">Missing since</span>' +
-                  '<span class="mc-v">' + esc(m.dateMissing) + '</span>' +
-                '</span>' +
-              '</span>' +
-            '</div>' +
+            (wide
+              ? '<p class="mc-note">Below the usual 80% match, but kept because of the long ' +
+                'time since this child went missing (faces change a lot with age). ' +
+                'Lower confidence — please verify this one especially carefully.</p>'
+              : '') +
+            '<div class="mc-meta">' + meta + '</div>' +
           '</div>' +
         '</article>';
     });
